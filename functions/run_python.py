@@ -1,6 +1,8 @@
 import os
 import subprocess
 
+from google.genai import types
+
 
 def run_python_file(working_directory, file_path):
     full_path = os.path.realpath(os.path.join(working_directory, file_path))
@@ -32,3 +34,18 @@ def run_python_file(working_directory, file_path):
 
     except Exception as e:
         return f"Error: Failed to execute Python file: {e}"
+
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Runs a targetted .py file",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="Relative path from the working directory to the .py file we want to run.",
+            ),
+        },
+    ),
+)
