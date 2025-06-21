@@ -33,7 +33,21 @@ def main():
         types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
 
-    generate_content(client, messages, verbose)
+    iterations = 0
+    while True:
+        iterations += 1
+        if iterations > 20:
+            print("Too much loopage, sorry~ Only 20 allowed!")
+            sys.exit(1)
+
+        try:
+            response = generate_content(client, messages, verbose)
+            if response:
+                print("Response:")
+                print(response)
+                break
+        except Exception as e:
+            print(f"Error found, send help: {e}")
 
 
 def generate_content(client, messages, verbose):
@@ -50,9 +64,15 @@ def generate_content(client, messages, verbose):
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
         print("Response tokens:", response.usage_metadata.candidates_token_count)
 
+    if response.candidates:
+        for candidate in response.candidates:
+            content = candidate.content
+            messages.append(content)
+
     if not response.function_calls:
         return response.text or "(No text response from model)"
 
+    function_responses = []
     for function_call_part in response.function_calls:
         function_call_result = call_function(function_call_part, verbose=verbose)
 
@@ -63,12 +83,19 @@ def generate_content(client, messages, verbose):
         ):
             raise RuntimeError("Function response missing or malformed")
 
-        result_data = function_call_result.parts[0].function_response.response
+        function_result_part = function_call_result.parts[0]
+
+        result_data = function_result_part.function_response.response
 
         if verbose:
             print(f"-> {result_data}")
 
-        return result_data.get("result") or result_data.get("error")
+        function_responses.append(function_result_part)
+
+    if not function_responses:
+        raise Exception("No responses generated")
+
+    messages.append(types.Content(role="tool", parts=function_responses))
 
 
 if __name__ == "__main__":
